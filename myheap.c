@@ -30,6 +30,7 @@ static int get_block_size(void *block_start) {
   long *header = block_start;
   // remove the last bit from header (i.e, the alloc bit) and return the result (i.e., the block size)
   return *header & 0xfffffffffffffffe;
+  
 }
 
 /*
@@ -136,8 +137,13 @@ static void *coalesce(struct myheap *h, void *first_block_start) {
  */
 static int get_size_to_allocate(int user_size) {
   
-  /* TO BE COMPLETED BY THE STUDENT. */
-  return 0;
+  int size = user_size + HEADER_SIZE * 2;
+  
+  if (size % HEADER_SIZE != 0) {
+    size = (size / HEADER_SIZE + 1) * HEADER_SIZE;
+  }
+  
+  return size;
 }
 
 /*
