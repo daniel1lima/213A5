@@ -156,9 +156,19 @@ static int get_size_to_allocate(int user_size) {
  * block as in use. Returns the payload of the block marked as in use.
  */
 static void *split_and_mark_used(struct myheap *h, void *block_start, int needed_size) {
+  int leftover = get_block_size(block_start) - needed_size;
 
-  /* TO BE COMPLETED BY THE STUDENT. */
-  return NULL;
+  if (leftover >= (3 * HEADER_SIZE)) {
+    // Split the block
+    set_block_header(block_start, needed_size, 1);
+    void *second_block = (char *)block_start + needed_size;
+    set_block_header(second_block, leftover, 0);
+    return get_payload(block_start);
+  } else {
+    // Block is not splittable, mark entire block as used
+    set_block_header(block_start, get_block_size(block_start), 1);
+    return get_payload(block_start);
+  }
 }
 
 /*
