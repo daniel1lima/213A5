@@ -119,14 +119,27 @@ static int is_within_heap_range(struct myheap *h, void *addr) {
  * joining first_block_start and its consecutive next block
  * if and only if both blocks are free and first_block_start
  * has a next block in the heap. 
- *
- * NOTE: This function can return NULL, but if your design would benefit from
- * it returning a pointer to some block, then you are free to have it do so.
  */
 static void *coalesce(struct myheap *h, void *first_block_start) {
-  
-  /* TO BE COMPLETED BY THE STUDENT. */
-  return NULL;
+  if (!is_within_heap_range(h, first_block_start) || block_is_in_use(first_block_start)) {
+    return first_block_start;
+  }
+
+  void *next_block = get_next_block(first_block_start);
+
+
+  if (!is_within_heap_range(h, next_block) || block_is_in_use(next_block)) {
+    return first_block_start;
+  }
+
+
+  int total_size = get_block_size(first_block_start) + get_block_size(next_block);
+
+
+  set_block_header(first_block_start, total_size, 0);
+
+
+  return first_block_start;
 }
 
 /*
@@ -159,13 +172,13 @@ static void *split_and_mark_used(struct myheap *h, void *block_start, int needed
   int leftover = get_block_size(block_start) - needed_size;
 
   if (leftover >= (3 * HEADER_SIZE)) {
-    // Split the block
+    // split the block
     set_block_header(block_start, needed_size, 1);
     void *second_block = (char *)block_start + needed_size;
     set_block_header(second_block, leftover, 0);
     return get_payload(block_start);
   } else {
-    // Block is not splittable, mark entire block as used
+    // block is not splittable, mark entire block as used
     set_block_header(block_start, get_block_size(block_start), 1);
     return get_payload(block_start);
   }
@@ -197,26 +210,23 @@ struct myheap *heap_create(unsigned int size)
  */
 void myheap_free(struct myheap *h, void *payload) {
   void *block_start = get_block_start(payload);
-  int block_size = get_block_size(block_start);
   
-  // Mark the block as free
-  set_block_header(block_start, block_size, 0);
+
+  set_block_header(block_start, get_block_size(block_start), 0);
   
-  // Try to coalesce with the previous block
+
   void *prev_block = get_previous_block(block_start);
   if (prev_block >= h->start && !block_is_in_use(prev_block)) {
-    block_size += get_block_size(prev_block);
-    block_start = prev_block;
+    block_start = coalesce(h, prev_block);
   }
   
-  // Try to coalesce with the next block
+
   void *next_block = get_next_block(block_start);
   if (next_block < (void *)((char *)h->start + h->size) && !block_is_in_use(next_block)) {
-    block_size += get_block_size(next_block);
+    block_start = coalesce(h, block_start);
   }
   
-  // Set the header for the coalesced block
-  set_block_header(block_start, block_size, 0);
+  set_block_header(block_start, get_block_size(block_start), 0);
 }
 
 /*
@@ -225,21 +235,17 @@ void myheap_free(struct myheap *h, void *payload) {
  * or NULL if no block large enough to satisfy the request exists.
  */
 void *myheap_malloc(struct myheap *h, unsigned int user_size) {
-  
   int block_size = get_size_to_allocate(user_size);
-
   void *curr_block = h->start;
 
   for (; is_within_heap_range(h, curr_block); curr_block = get_next_block(curr_block)) {
     if (!block_is_in_use(curr_block)) {
-      int curr_block_size = get_block_size(curr_block); //forgot completely about this - since we are checking if the block size is enough for the user we need to include this line
+      int curr_block_size = get_block_size(curr_block);
       if (curr_block_size >= block_size) {
-        set_block_header(curr_block, block_size, 1);
-        return get_payload(curr_block);
+        return split_and_mark_used(h, curr_block, block_size); // split and mark used is helpful here since the user can request blocks larger than what we ca allocate
       }
-    } 
+    }
   }
-
 
   return NULL;
 }
