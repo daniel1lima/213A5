@@ -127,17 +127,14 @@ static void *coalesce(struct myheap *h, void *first_block_start) {
 
   void *next_block = get_next_block(first_block_start);
 
-
+  // Add check to ensure next_block is within heap range
   if (!is_within_heap_range(h, next_block) || block_is_in_use(next_block)) {
     return first_block_start;
   }
 
-
   int total_size = get_block_size(first_block_start) + get_block_size(next_block);
 
-
   set_block_header(first_block_start, total_size, 0);
-
 
   return first_block_start;
 }
@@ -209,20 +206,21 @@ struct myheap *heap_create(unsigned int size)
  * block with the previous and the next block, if they are also free.
  */
 void myheap_free(struct myheap *h, void *payload) {
+  if (payload == NULL || !is_within_heap_range(h, payload)) {
+    return;  // Add check for null payload or out of range
+  }
+
   void *block_start = get_block_start(payload);
   
-
   set_block_header(block_start, get_block_size(block_start), 0);
   
-
   void *prev_block = get_previous_block(block_start);
-  if (prev_block >= h->start && !block_is_in_use(prev_block)) {
+  if (is_within_heap_range(h, prev_block) && !block_is_in_use(prev_block)) {
     block_start = coalesce(h, prev_block);
   }
   
-
   void *next_block = get_next_block(block_start);
-  if (next_block < (void *)((char *)h->start + h->size) && !block_is_in_use(next_block)) {
+  if (is_within_heap_range(h, next_block) && !block_is_in_use(next_block)) {
     block_start = coalesce(h, block_start);
   }
   
@@ -235,6 +233,7 @@ void myheap_free(struct myheap *h, void *payload) {
  * or NULL if no block large enough to satisfy the request exists.
  */
 void *myheap_malloc(struct myheap *h, unsigned int user_size) {
+
   int block_size = get_size_to_allocate(user_size);
   void *curr_block = h->start;
 
