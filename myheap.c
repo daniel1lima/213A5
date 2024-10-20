@@ -196,8 +196,27 @@ struct myheap *heap_create(unsigned int size)
  * block with the previous and the next block, if they are also free.
  */
 void myheap_free(struct myheap *h, void *payload) {
+  void *block_start = get_block_start(payload);
+  int block_size = get_block_size(block_start);
   
-  /* TO BE COMPLETED BY THE STUDENT. */
+  // Mark the block as free
+  set_block_header(block_start, block_size, 0);
+  
+  // Try to coalesce with the previous block
+  void *prev_block = get_previous_block(block_start);
+  if (prev_block >= h->start && !block_is_in_use(prev_block)) {
+    block_size += get_block_size(prev_block);
+    block_start = prev_block;
+  }
+  
+  // Try to coalesce with the next block
+  void *next_block = get_next_block(block_start);
+  if (next_block < (void *)((char *)h->start + h->size) && !block_is_in_use(next_block)) {
+    block_size += get_block_size(next_block);
+  }
+  
+  // Set the header for the coalesced block
+  set_block_header(block_start, block_size, 0);
 }
 
 /*
@@ -207,6 +226,20 @@ void myheap_free(struct myheap *h, void *payload) {
  */
 void *myheap_malloc(struct myheap *h, unsigned int user_size) {
   
-  /* TO BE COMPLETED BY THE STUDENT. */
+  int block_size = get_size_to_allocate(user_size);
+
+  void *curr_block = h->start;
+
+  for (; is_within_heap_range(h, curr_block); curr_block = get_next_block(curr_block)) {
+    if (!block_is_in_use(curr_block)) {
+      int curr_block_size = get_block_size(curr_block); //forgot completely about this - since we are checking if the block size is enough for the user we need to include this line
+      if (curr_block_size >= block_size) {
+        set_block_header(curr_block, block_size, 1);
+        return get_payload(curr_block);
+      }
+    } 
+  }
+
+
   return NULL;
 }
